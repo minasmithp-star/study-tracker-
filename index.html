@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HexNote · Study Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-area">
+      <h1>Hex<span>Note</span></h1>
+      <p>Study Tracker</p>
+    </div>
+    <div class="date-pill" id="datePill"></div>
+  </header>
+
+  <!-- TIMER -->
+  <div class="timer-card">
+    <div class="timer-left">
+      <div class="timer-display" id="timerDisplay">00:00:00</div>
+      <label>Sesión actual</label>
+      <div class="subject-row">
+        <select id="subjectSelect"></select>
+        <input type="text" id="noteInput" placeholder="Nota opcional…" />
+      </div>
+      <div class="timer-controls">
+        <button class="btn btn-primary" id="startBtn" onclick="startTimer()">▶ Iniciar</button>
+        <button class="btn btn-stop" id="stopBtn" onclick="stopTimer()" disabled>■ Detener</button>
+        <button class="btn btn-log" id="logBtn" onclick="logSession()" disabled>✓ Guardar</button>
+      </div>
+      <div class="manual-row">
+        <label style="font-size:0.72rem;color:var(--text-muted);font-family:'DM Sans',sans-serif;align-self:center;letter-spacing:0.5px;">O agregar manual:</label>
+        <input type="number" id="manHours" placeholder="h" min="0" max="24" />
+        <input type="number" id="manMins" placeholder="m" min="0" max="59" />
+        <button class="btn" onclick="logManual()" style="font-size:0.78rem;padding:7px 14px;">+ Agregar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Hoy</div>
+      <div class="stat-value" id="statToday">0h 0m</div>
+      <div class="stat-sub" id="statTodaySessions">0 sesiones</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Esta semana</div>
+      <div class="stat-value" id="statWeek">0h 0m</div>
+      <div class="stat-sub" id="statWeekDays">0 días activos</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total</div>
+      <div class="stat-value" id="statTotal">0h 0m</div>
+      <div class="stat-sub" id="statTotalSessions">0 sesiones</div>
+    </div>
+  </div>
+
+  <!-- HEX WEEK -->
+  <div class="week-section">
+    <div class="section-title">Semana actual</div>
+    <div class="hex-week" id="hexWeek"></div>
+  </div>
+
+  <!-- SESSION LOG -->
+  <div class="log-section">
+    <div class="log-header">
+      <div class="section-title" style="margin:0">Registro de sesiones</div>
+      <button class="btn" onclick="clearAll()" style="font-size:0.72rem;padding:5px 12px;">Limpiar todo</button>
+    </div>
+    <div class="log-list" id="logList"></div>
+  </div>
+
+  <!-- BREAKDOWN -->
+  <div class="breakdown-section">
+    <div class="section-title" style="margin-bottom:18px">Por materia</div>
+    <div class="breakdown-list" id="breakdownList"></div>
+  </div>
+
+</div>
+<script src="script.js"></script>
+</body>
+</html>
