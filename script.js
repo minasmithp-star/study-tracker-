@@ -1,9 +1,9 @@
 // ── DATA ──────────────────────────────────────────────────────────────────────
 const SUBJECTS = [
-  { name: 'Matemática A',      color: '#f4b8c1' },
-  { name: 'ICB 1',             color: '#c9b8e8' },
-  { name: 'Química General 1', color: '#b8ddd0' },
-  { name: 'Otro',              color: '#e2d9cf' },
+  { name: 'Matemática A',      color: '#a8c8e8', goal: 10 },
+  { name: 'ICB 1',             color: '#6aacb0', goal: 5  },
+  { name: 'Química General 1', color: '#a8d8b8', goal: 8  },
+  { name: 'Otro',              color: '#e2d9cf', goal: null },
 ];
 
 const DAYS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -229,29 +229,62 @@ function render() {
   // BREAKDOWN
   const breakdown = document.getElementById('breakdownList');
   breakdown.innerHTML = '';
-  const bySubject = {};
+
+  // Calculate this week's seconds per subject
+  const weekDates2 = getWeekDates();
+  const bySubjectWeek = {};
+  const bySubjectTotal = {};
   sessions.forEach(s => {
-    bySubject[s.subject] = (bySubject[s.subject] || 0) + s.secs;
+    bySubjectTotal[s.subject] = (bySubjectTotal[s.subject] || 0) + s.secs;
+    const d = new Date(s.date);
+    if (d >= weekDates2[0] && d <= weekDates2[6]) {
+      bySubjectWeek[s.subject] = (bySubjectWeek[s.subject] || 0) + s.secs;
+    }
   });
-  const maxSecs = Math.max(...Object.values(bySubject), 1);
-  const sorted = Object.entries(bySubject).sort((a,b) => b[1]-a[1]);
-  if (sorted.length === 0) {
+
+  const hasData = Object.keys(bySubjectTotal).length > 0;
+  if (!hasData) {
     breakdown.innerHTML = '<div class="empty-state">sin datos aún</div>';
   } else {
-    sorted.forEach(([name, secs]) => {
-      const pct = (secs / maxSecs * 100).toFixed(1);
-      const color = subjectColor(name);
+    // Show all subjects that have a goal first, then others
+    const allNames = [...new Set([
+      ...SUBJECTS.filter(s => s.goal).map(s => s.name),
+      ...Object.keys(bySubjectTotal)
+    ])];
+
+    allNames.forEach(name => {
+      const totalSecs = bySubjectTotal[name] || 0;
+      const weekSecs = bySubjectWeek[name] || 0;
+      if (totalSecs === 0 && weekSecs === 0) return;
+      const subj = SUBJECTS.find(s => s.name === name);
+      const color = subj ? subj.color : '#e2d9cf';
+      const goal = subj ? subj.goal : null;
+      const goalSecs = goal ? goal * 3600 : null;
+      const weekPct = goalSecs ? Math.min(weekSecs / goalSecs * 100, 100).toFixed(1) : null;
+      const reached = goalSecs && weekSecs >= goalSecs;
+
       const el = document.createElement('div');
       el.className = 'breakdown-row';
       el.innerHTML = `
         <span class="brow-dot" style="background:${color}"></span>
         <div class="brow-bar-wrap">
-          <span class="brow-label">${name}</span>
-          <div class="brow-bar-bg">
-            <div class="brow-bar-fill" style="width:${pct}%;background:${color}"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="brow-label">${name}</span>
+            ${goal ? `<span style="font-size:0.68rem;color:${reached ? color : 'var(--text-muted)'}; font-weight:${reached?'600':'400'}">${reached ? '✓ meta!' : `meta: ${goal}h`}</span>` : ''}
           </div>
+          ${goalSecs ? `
+          <div class="brow-bar-bg">
+            <div class="brow-bar-fill" style="width:${weekPct}%;background:${color}"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="font-size:0.65rem;color:var(--text-muted)">esta semana: ${fmtTime(weekSecs)}</span>
+            <span style="font-size:0.65rem;color:var(--text-muted)">total: ${fmtTime(totalSecs)}</span>
+          </div>` : `
+          <div class="brow-bar-bg">
+            <div class="brow-bar-fill" style="width:100%;background:${color}"></div>
+          </div>`}
         </div>
-        <span class="brow-time">${fmtTime(secs)}</span>
+        <span class="brow-time">${fmtTime(weekSecs)}</span>
       `;
       breakdown.appendChild(el);
     });
