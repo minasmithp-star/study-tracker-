@@ -1,3 +1,21 @@
+// ── FIREBASE ──────────────────────────────────────────────────────────────────
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDOe-FEKErq7F4h8PR7dxRy8Qu3gind0X0",
+  authDomain: "nomen-app.firebaseapp.com",
+  projectId: "nomen-app",
+  storageBucket: "nomen-app.firebasestorage.app",
+  messagingSenderId: "298185354477",
+  appId: "1:298185354477:web:717913ab9dce10712270e4"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const SESSION_USER = "mina"; // identificador fijo
+const sessionsCol = collection(db, "hexnote", SESSION_USER, "sessions");
+
 // ── DATA ──────────────────────────────────────────────────────────────────────
 const SUBJECTS = [
   { name: 'Matemática A',      color: '#a8c8e8', goal: 10 },
@@ -8,7 +26,7 @@ const SUBJECTS = [
 
 const DAYS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 
-let sessions = JSON.parse(localStorage.getItem('hexnote_sessions') || '[]');
+let sessions = [];
 let timerInterval = null;
 let timerStart = null;
 let timerSeconds = 0;
@@ -28,7 +46,7 @@ function init() {
     sel.appendChild(opt);
   });
 
-  render();
+  startSync();
 }
 
 // ── TIMER ─────────────────────────────────────────────────────────────────────
@@ -88,32 +106,36 @@ function logManual() {
 
 // ── DATA OPS ──────────────────────────────────────────────────────────────────
 function addSession(subject, secs, note) {
-  sessions.unshift({
+  const session = {
     id: Date.now(),
     subject,
     secs,
     note,
     date: new Date().toISOString()
-  });
-  save();
-  render();
+  };
+  save(session);
 }
 
 function deleteSession(id) {
-  sessions = sessions.filter(s => s.id !== id);
-  save();
-  render();
+  deleteDoc(doc(sessionsCol, String(id)));
 }
 
 function clearAll() {
   if (!confirm('¿Limpiar todo el historial?')) return;
-  sessions = [];
-  save();
-  render();
+  sessions.forEach(s => deleteDoc(doc(sessionsCol, String(s.id))));
 }
 
-function save() {
-  localStorage.setItem('hexnote_sessions', JSON.stringify(sessions));
+function save(session) {
+  setDoc(doc(sessionsCol, String(session.id)), session);
+}
+
+// ── FIRESTORE LISTENER ────────────────────────────────────────────────────────
+function startSync() {
+  onSnapshot(sessionsCol, (snapshot) => {
+    sessions = snapshot.docs.map(d => d.data());
+    sessions.sort((a, b) => new Date(b.date) - new Date(a.date));
+    render();
+  });
 }
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
