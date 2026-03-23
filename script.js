@@ -46,11 +46,29 @@ function init() {
 }
 
 // ── FIRESTORE SYNC ────────────────────────────────────────────────────────────
+function setSyncStatus(status) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  if (status === 'ok') {
+    el.textContent = '● sincronizado';
+    el.style.color = '#6aacb0';
+  } else if (status === 'saving') {
+    el.textContent = '● guardando…';
+    el.style.color = 'var(--text-muted)';
+  } else {
+    el.textContent = '● sin conexión';
+    el.style.color = '#e8909e';
+  }
+}
+
 function startSync() {
   sessionsCol.onSnapshot((snapshot) => {
     sessions = snapshot.docs.map(d => d.data());
     sessions.sort((a, b) => new Date(b.date) - new Date(a.date));
+    setSyncStatus('ok');
     render();
+  }, (error) => {
+    setSyncStatus('error');
   });
 }
 
@@ -113,6 +131,7 @@ function logManual() {
 function addSession(subject, secs, note) {
   const id = Date.now();
   const session = { id, subject, secs, note, date: new Date().toISOString() };
+  setSyncStatus('saving');
   sessionsCol.doc(String(id)).set(session);
 }
 
