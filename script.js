@@ -1,7 +1,4 @@
 // ── FIREBASE ──────────────────────────────────────────────────────────────────
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
-
 const firebaseConfig = {
   apiKey: "AIzaSyDOe-FEKErq7F4h8PR7dxRy8Qu3gind0X0",
   authDomain: "nomen-app.firebaseapp.com",
@@ -11,10 +8,9 @@ const firebaseConfig = {
   appId: "1:298185354477:web:717913ab9dce10712270e4"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const SESSION_USER = "mina"; // identificador fijo
-const sessionsCol = collection(db, "hexnote", SESSION_USER, "sessions");
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const sessionsCol = db.collection("hexnote").doc("mina").collection("sessions");
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 const SUBJECTS = [
@@ -47,6 +43,15 @@ function init() {
   });
 
   startSync();
+}
+
+// ── FIRESTORE SYNC ────────────────────────────────────────────────────────────
+function startSync() {
+  sessionsCol.onSnapshot((snapshot) => {
+    sessions = snapshot.docs.map(d => d.data());
+    sessions.sort((a, b) => new Date(b.date) - new Date(a.date));
+    render();
+  });
 }
 
 // ── TIMER ─────────────────────────────────────────────────────────────────────
@@ -106,36 +111,18 @@ function logManual() {
 
 // ── DATA OPS ──────────────────────────────────────────────────────────────────
 function addSession(subject, secs, note) {
-  const session = {
-    id: Date.now(),
-    subject,
-    secs,
-    note,
-    date: new Date().toISOString()
-  };
-  save(session);
+  const id = Date.now();
+  const session = { id, subject, secs, note, date: new Date().toISOString() };
+  sessionsCol.doc(String(id)).set(session);
 }
 
 function deleteSession(id) {
-  deleteDoc(doc(sessionsCol, String(id)));
+  sessionsCol.doc(String(id)).delete();
 }
 
 function clearAll() {
   if (!confirm('¿Limpiar todo el historial?')) return;
-  sessions.forEach(s => deleteDoc(doc(sessionsCol, String(s.id))));
-}
-
-function save(session) {
-  setDoc(doc(sessionsCol, String(session.id)), session);
-}
-
-// ── FIRESTORE LISTENER ────────────────────────────────────────────────────────
-function startSync() {
-  onSnapshot(sessionsCol, (snapshot) => {
-    sessions = snapshot.docs.map(d => d.data());
-    sessions.sort((a, b) => new Date(b.date) - new Date(a.date));
-    render();
-  });
+  sessions.forEach(s => sessionsCol.doc(String(s.id)).delete());
 }
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
@@ -170,7 +157,6 @@ function getWeekDates() {
 function render() {
   const now = new Date();
 
-  // STATS
   const todaySessions = sessions.filter(s => sameDay(new Date(s.date), now));
   const todaySecs = todaySessions.reduce((a,s) => a+s.secs, 0);
   document.getElementById('statToday').textContent = fmtTime(todaySecs);
@@ -190,27 +176,18 @@ function render() {
   document.getElementById('statTotal').textContent = fmtTime(totalSecs);
   document.getElementById('statTotalSessions').textContent = `${sessions.length} sesión${sessions.length!==1?'es':''}`;
 
-  // HEX WEEK
   const hexWrap = document.getElementById('hexWeek');
   hexWrap.innerHTML = '';
-  const palette = ['#f4b8c1','#c9b8e8','#b8ddd0','#f7ccb0','#b8d4e8','#f0dfa0','#d4b8e8'];
+  const palette = ['#a8c8e8','#c9b8e8','#a8d8b8','#f7ccb0','#6aacb0','#f0dfa0','#d4b8e8'];
   weekDates.forEach((d, i) => {
-    const daySecs = sessions
-      .filter(s => sameDay(new Date(s.date), d))
-      .reduce((a,s) => a+s.secs, 0);
+    const daySecs = sessions.filter(s => sameDay(new Date(s.date), d)).reduce((a,s) => a+s.secs, 0);
     const h = Math.floor(daySecs / 3600);
     const m = Math.floor((daySecs % 3600) / 60);
     const intensity = Math.min(daySecs / (6*3600), 1);
     const isToday = sameDay(d, now);
-
     const wrapper = document.createElement('div');
     wrapper.className = 'hex-day';
-
-    const baseColor = palette[i];
-    const fillColor = daySecs === 0
-      ? 'var(--surface2)'
-      : blendHex(baseColor, intensity);
-
+    const fillColor = daySecs === 0 ? 'var(--surface2)' : blendHex(palette[i], intensity);
     wrapper.innerHTML = `
       <div class="hex-shape ${isToday ? 'hex-today' : ''}">
         <div class="hex-border"></div>
@@ -223,7 +200,6 @@ function render() {
     hexWrap.appendChild(wrapper);
   });
 
-  // LOG LIST
   const logList = document.getElementById('logList');
   logList.innerHTML = '';
   if (sessions.length === 0) {
@@ -248,18 +224,14 @@ function render() {
     });
   }
 
-  // BREAKDOWN
   const breakdown = document.getElementById('breakdownList');
   breakdown.innerHTML = '';
-
-  // Calculate this week's seconds per subject
-  const weekDates2 = getWeekDates();
   const bySubjectWeek = {};
   const bySubjectTotal = {};
   sessions.forEach(s => {
     bySubjectTotal[s.subject] = (bySubjectTotal[s.subject] || 0) + s.secs;
     const d = new Date(s.date);
-    if (d >= weekDates2[0] && d <= weekDates2[6]) {
+    if (d >= weekDates[0] && d <= weekDates[6]) {
       bySubjectWeek[s.subject] = (bySubjectWeek[s.subject] || 0) + s.secs;
     }
   });
@@ -268,23 +240,20 @@ function render() {
   if (!hasData) {
     breakdown.innerHTML = '<div class="empty-state">sin datos aún</div>';
   } else {
-    // Show all subjects that have a goal first, then others
     const allNames = [...new Set([
       ...SUBJECTS.filter(s => s.goal).map(s => s.name),
       ...Object.keys(bySubjectTotal)
     ])];
-
     allNames.forEach(name => {
       const totalSecs = bySubjectTotal[name] || 0;
-      const weekSecs = bySubjectWeek[name] || 0;
-      if (totalSecs === 0 && weekSecs === 0) return;
+      const weekSecs2 = bySubjectWeek[name] || 0;
+      if (totalSecs === 0 && weekSecs2 === 0) return;
       const subj = SUBJECTS.find(s => s.name === name);
       const color = subj ? subj.color : '#e2d9cf';
       const goal = subj ? subj.goal : null;
       const goalSecs = goal ? goal * 3600 : null;
-      const weekPct = goalSecs ? Math.min(weekSecs / goalSecs * 100, 100).toFixed(1) : null;
-      const reached = goalSecs && weekSecs >= goalSecs;
-
+      const weekPct = goalSecs ? Math.min(weekSecs2 / goalSecs * 100, 100).toFixed(1) : null;
+      const reached = goalSecs && weekSecs2 >= goalSecs;
       const el = document.createElement('div');
       el.className = 'breakdown-row';
       el.innerHTML = `
@@ -292,21 +261,21 @@ function render() {
         <div class="brow-bar-wrap">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <span class="brow-label">${name}</span>
-            ${goal ? `<span style="font-size:0.68rem;color:${reached ? color : 'var(--text-muted)'}; font-weight:${reached?'600':'400'}">${reached ? '✓ meta!' : `meta: ${goal}h`}</span>` : ''}
+            ${goal ? `<span style="font-size:0.68rem;color:${reached ? color : 'var(--text-muted)'};font-weight:${reached?'600':'400'}">${reached ? '✓ meta!' : `meta: ${goal}h`}</span>` : ''}
           </div>
           ${goalSecs ? `
           <div class="brow-bar-bg">
             <div class="brow-bar-fill" style="width:${weekPct}%;background:${color}"></div>
           </div>
           <div style="display:flex;justify-content:space-between">
-            <span style="font-size:0.65rem;color:var(--text-muted)">esta semana: ${fmtTime(weekSecs)}</span>
+            <span style="font-size:0.65rem;color:var(--text-muted)">esta semana: ${fmtTime(weekSecs2)}</span>
             <span style="font-size:0.65rem;color:var(--text-muted)">total: ${fmtTime(totalSecs)}</span>
           </div>` : `
           <div class="brow-bar-bg">
             <div class="brow-bar-fill" style="width:100%;background:${color}"></div>
           </div>`}
         </div>
-        <span class="brow-time">${fmtTime(weekSecs)}</span>
+        <span class="brow-time">${fmtTime(weekSecs2)}</span>
       `;
       breakdown.appendChild(el);
     });
