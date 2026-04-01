@@ -34,17 +34,9 @@ function init() {
   document.getElementById('datePill').textContent =
     now.toLocaleDateString('es-UY', { weekday:'long', day:'numeric', month:'long' });
 
-  const sel = document.getElementById('subjectSelect');
-  const pomSel = document.getElementById('pomSubjectSelect');
-  const pomChangerSel = document.getElementById('pomSubjectChangerSelect');
-  SUBJECTS.forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s.name;
-    opt.textContent = s.name;
-    sel.appendChild(opt);
-    pomSel.appendChild(opt.cloneNode(true));
-    pomChangerSel.appendChild(opt.cloneNode(true));
-  });
+  subjectSelect    = buildCustomSelect('subjectSelectWrap');
+  pomSubjectSelect = buildCustomSelect('pomSubjectSelectWrap');
+  pomChangerSelect = buildCustomSelect('pomChangerSelectWrap');
 
   pomInitPreview();
   pomBackToConfig();
@@ -125,7 +117,7 @@ function pomStartPlanned() {
   pomTotalPomodoros = n;
   pomCompletedCount = 0;
   pomTotalStudySecs = 0;
-  pomSubject = document.getElementById('pomSubjectSelect').value;
+  pomSubject = pomSubjectSelect.getValue();
   pomIsWork = true;
   pomSecsLeft = workMin * 60;
   pomTotalSecs = pomSecsLeft;
@@ -210,8 +202,8 @@ function pomPhaseEnd() {
     pomTotalSecs = pomSecsLeft;
   } else {
     // pick up subject change if made during break
-    const changer = document.getElementById('pomSubjectChangerSelect');
-    if (changer && changer.value) pomSubject = changer.value;
+    const newSubject = pomChangerSelect ? pomChangerSelect.getValue() : null;
+    if (newSubject) pomSubject = newSubject;
     // start next work
     pomIsWork = true;
     const workMin = parseInt(document.getElementById('pomWorkMin').value) || 25;
@@ -304,6 +296,68 @@ function playAlarmEnd() {
   } catch(e) {}
 }
 
+// ── CUSTOM SELECT ─────────────────────────────────────────────────────────────
+function buildCustomSelect(containerId, onChange) {
+  const container = document.getElementById(containerId);
+  if (!container) return { getValue: () => SUBJECTS[0].name, setValue: () => {} };
+
+  let currentValue = SUBJECTS[0].name;
+  let isOpen = false;
+
+  container.innerHTML = `
+    <div class="cs-selected" id="${containerId}-sel">
+      <span class="cs-dot" id="${containerId}-dot" style="background:${SUBJECTS[0].color}"></span>
+      <span class="cs-text" id="${containerId}-text">${SUBJECTS[0].name}</span>
+      <span class="cs-arrow">▼</span>
+    </div>
+    <div class="cs-dropdown" id="${containerId}-drop">
+      ${SUBJECTS.map(s => `
+        <div class="cs-option${s.name === currentValue ? ' selected' : ''}" data-value="${s.name}" data-color="${s.color}">
+          <span class="cs-dot" style="background:${s.color}"></span>
+          <span>${s.name}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  const sel = container.querySelector('.cs-selected');
+  const drop = container.querySelector('.cs-dropdown');
+
+  function open() {
+    isOpen = true;
+    sel.classList.add('open');
+    drop.classList.add('open');
+  }
+  function close() {
+    isOpen = false;
+    sel.classList.remove('open');
+    drop.classList.remove('open');
+  }
+
+  sel.addEventListener('click', e => { e.stopPropagation(); isOpen ? close() : open(); });
+  drop.querySelectorAll('.cs-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      currentValue = opt.dataset.value;
+      document.getElementById(`${containerId}-dot`).style.background = opt.dataset.color;
+      document.getElementById(`${containerId}-text`).textContent = currentValue;
+      drop.querySelectorAll('.cs-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      close();
+      if (onChange) onChange(currentValue);
+    });
+  });
+  document.addEventListener('click', close);
+
+  return {
+    getValue: () => currentValue,
+    setValue: (val) => {
+      const opt = drop.querySelector(`[data-value="${val}"]`);
+      if (opt) opt.dispatchEvent(new Event('click'));
+    }
+  };
+}
+
+let subjectSelect, pomSubjectSelect, pomChangerSelect;
 
 function startTimer() {
   if (running) return;
@@ -338,7 +392,7 @@ function pad(n) { return String(n).padStart(2,'0'); }
 
 function logSession() {
   if (timerSeconds < 10) return;
-  const subject = document.getElementById('subjectSelect').value;
+  const subject = subjectSelect.getValue();
   const note = document.getElementById('noteInput').value.trim();
   addSession(subject, timerSeconds, note);
   stopTimer();
@@ -353,7 +407,7 @@ function logManual() {
   const m = parseInt(document.getElementById('manMins').value) || 0;
   const secs = h * 3600 + m * 60;
   if (secs <= 0) return;
-  const subject = document.getElementById('subjectSelect').value;
+  const subject = subjectSelect.getValue();
   addSession(subject, secs, '(manual)');
   document.getElementById('manHours').value = '';
   document.getElementById('manMins').value = '';
