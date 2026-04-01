@@ -35,13 +35,19 @@ function init() {
     now.toLocaleDateString('es-UY', { weekday:'long', day:'numeric', month:'long' });
 
   const sel = document.getElementById('subjectSelect');
+  const pomSel = document.getElementById('pomSubjectSelect');
+  const pomChangerSel = document.getElementById('pomSubjectChangerSelect');
   SUBJECTS.forEach(s => {
     const opt = document.createElement('option');
     opt.value = s.name;
     opt.textContent = s.name;
     sel.appendChild(opt);
+    pomSel.appendChild(opt.cloneNode(true));
+    pomChangerSel.appendChild(opt.cloneNode(true));
   });
 
+  pomInitPreview();
+  pomBackToConfig();
   startSync();
 }
 
@@ -72,7 +78,232 @@ function startSync() {
   });
 }
 
-// ── TIMER ─────────────────────────────────────────────────────────────────────
+// ── POMODORO ──────────────────────────────────────────────────────────────────
+let pomInterval = null;
+let pomSecsLeft = 0;
+let pomTotalSecs = 0;
+let pomIsWork = true;
+let pomRunning = false;
+let pomCompletedCount = 0;
+let pomTotalPomodoros = 0;
+let pomTotalStudySecs = 0;
+let pomSubject = '';
+
+function pomCalcPlan() {
+  const totalMin = parseInt(document.getElementById('pomTotalMin').value) || 90;
+  const workMin  = parseInt(document.getElementById('pomWorkMin').value)  || 25;
+  const breakMin = parseInt(document.getElementById('pomBreakMin').value) || 15;
+  // how many work blocks fit: totalMin = n*work + (n-1)*break → n = (totalMin + break) / (work + break)
+  const n = Math.floor((totalMin + breakMin) / (workMin + breakMin));
+  const actualStudy = n * workMin;
+  const actualBreak = (n - 1) * breakMin;
+  const actualTotal = actualStudy + actualBreak;
+  return { n, workMin, breakMin, actualStudy, actualBreak, actualTotal };
+}
+
+function pomUpdatePreview() {
+  const { n, workMin, breakMin, actualStudy, actualTotal } = pomCalcPlan();
+  const el = document.getElementById('pomPlanPreview');
+  if (!el) return;
+  el.innerHTML = n < 1
+    ? '⚠️ El tiempo es muy corto para al menos un pomodoro.'
+    : `<b>${n} pomodoro${n>1?'s':''}</b> de ${workMin} min · ${n>1?`${n-1} descanso${n-1>1?'s':''} de ${breakMin} min · `:'sin descansos · '}<b>${actualStudy} min de estudio</b> · ${actualTotal} min en total`;
+}
+
+// listen to input changes for live preview
+function pomInitPreview() {
+  ['pomTotalMin','pomWorkMin','pomBreakMin'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', pomUpdatePreview);
+  });
+  pomUpdatePreview();
+}
+
+function pomStartPlanned() {
+  const { n, workMin, breakMin } = pomCalcPlan();
+  if (n < 1) return;
+  pomTotalPomodoros = n;
+  pomCompletedCount = 0;
+  pomTotalStudySecs = 0;
+  pomSubject = document.getElementById('pomSubjectSelect').value;
+  pomIsWork = true;
+  pomSecsLeft = workMin * 60;
+  pomTotalSecs = pomSecsLeft;
+
+  document.getElementById('pomConfig').style.display = 'none';
+  document.getElementById('pomRunning').style.display = 'block';
+  document.getElementById('pomSummary').style.display = 'none';
+
+  pomUpdateRunDisplay();
+  pomRunning = true;
+  document.getElementById('pomStartBtn').style.display = 'none';
+  document.getElementById('pomPauseBtn').style.display = '';
+  pomInterval = setInterval(pomTick, 1000);
+}
+
+function pomTick() {
+  if (pomSecsLeft <= 0) {
+    pomPhaseEnd();
+    return;
+  }
+  if (pomIsWork) pomTotalStudySecs++;
+  pomSecsLeft--;
+  pomUpdateRunDisplay();
+}
+
+function pomUpdateRunDisplay() {
+  const m = Math.floor(pomSecsLeft / 60);
+  const s = pomSecsLeft % 60;
+  document.getElementById('pomDisplay').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+  const circumference = 402;
+  const offset = circumference * (1 - pomSecsLeft / pomTotalSecs);
+  const ring = document.getElementById('pomRing');
+  if (ring) {
+    ring.style.strokeDashoffset = offset;
+    ring.style.stroke = pomIsWork ? 'var(--pink-deep)' : '#6aacb0';
+  }
+
+  const phase = document.getElementById('pomPhase');
+  if (phase) {
+    phase.textContent = pomIsWork ? 'trabajo' : 'descanso';
+    phase.style.color = pomIsWork ? 'var(--pink-deep)' : '#6aacb0';
+  }
+
+  const currentPom = pomIsWork ? pomCompletedCount + 1 : pomCompletedCount;
+  document.getElementById('pomProgressLabel').textContent = `🍅 ${currentPom} / ${pomTotalPomodoros}`;
+  document.getElementById('pomDoneCount').textContent = `🍅 ${pomCompletedCount}`;
+  document.getElementById('pomStudiedTime').textContent = fmtTime(pomTotalStudySecs);
+
+  const workMin = parseInt(document.getElementById('pomWorkMin').value) || 25;
+  const breakMin = parseInt(document.getElementById('pomBreakMin').value) || 15;
+  const remaining = pomIsWork
+    ? (pomTotalPomodoros - pomCompletedCount - 1) * (workMin + breakMin) * 60 + pomSecsLeft
+    : (pomTotalPomodoros - pomCompletedCount) * workMin * 60 + pomSecsLeft;
+  document.getElementById('pomRemainingTime').textContent = fmtTime(remaining);
+
+  // show subject changer only during break
+  const changer = document.getElementById('pomSubjectChanger');
+  if (changer) changer.style.display = pomIsWork ? 'none' : 'block';
+}
+
+function pomPhaseEnd() {
+  clearInterval(pomInterval);
+  pomRunning = false;
+  playAlarm();
+
+  if (pomIsWork) {
+    // save this pomodoro
+    addSession(pomSubject, parseInt(document.getElementById('pomWorkMin').value) * 60, '🍅 pomodoro');
+    pomCompletedCount++;
+
+    if (pomCompletedCount >= pomTotalPomodoros) {
+      // all done!
+      pomShowSummary();
+      return;
+    }
+
+    // start break
+    pomIsWork = false;
+    const breakMin = parseInt(document.getElementById('pomBreakMin').value) || 15;
+    pomSecsLeft = breakMin * 60;
+    pomTotalSecs = pomSecsLeft;
+  } else {
+    // pick up subject change if made during break
+    const changer = document.getElementById('pomSubjectChangerSelect');
+    if (changer && changer.value) pomSubject = changer.value;
+    // start next work
+    pomIsWork = true;
+    const workMin = parseInt(document.getElementById('pomWorkMin').value) || 25;
+    pomSecsLeft = workMin * 60;
+    pomTotalSecs = pomSecsLeft;
+  }
+
+  pomUpdateRunDisplay();
+  pomRunning = true;
+  pomInterval = setInterval(pomTick, 1000);
+}
+
+function pomShowSummary() {
+  document.getElementById('pomRunning').style.display = 'none';
+  document.getElementById('pomSummary').style.display = 'block';
+  document.getElementById('pomPhase').textContent = '¡listo!';
+  document.getElementById('pomPhase').style.color = '#6aacb0';
+  const workMin = parseInt(document.getElementById('pomWorkMin').value) || 25;
+  const breakMin = parseInt(document.getElementById('pomBreakMin').value) || 15;
+  document.getElementById('pomSummaryText').innerHTML =
+    `Materia: <b>${pomSubject}</b><br>` +
+    `Pomodoros completados: <b>🍅 ${pomCompletedCount}</b><br>` +
+    `Tiempo de estudio: <b>${fmtTime(pomTotalStudySecs)}</b><br>` +
+    `Intervalos: ${workMin} min trabajo · ${breakMin} min descanso`;
+  playAlarmEnd();
+}
+
+function pomPause() {
+  if (!pomRunning) return;
+  clearInterval(pomInterval);
+  pomRunning = false;
+  document.getElementById('pomStartBtn').style.display = '';
+  document.getElementById('pomPauseBtn').style.display = 'none';
+}
+
+function pomResume() {
+  if (pomRunning) return;
+  pomRunning = true;
+  document.getElementById('pomStartBtn').style.display = 'none';
+  document.getElementById('pomPauseBtn').style.display = '';
+  pomInterval = setInterval(pomTick, 1000);
+}
+
+function pomAbort() {
+  clearInterval(pomInterval);
+  pomRunning = false;
+  if (pomTotalStudySecs > 10) pomShowSummary();
+  else pomBackToConfig();
+}
+
+function pomBackToConfig() {
+  document.getElementById('pomConfig').style.display = 'block';
+  document.getElementById('pomRunning').style.display = 'none';
+  document.getElementById('pomSummary').style.display = 'none';
+  document.getElementById('pomPhase').textContent = 'configurar';
+  document.getElementById('pomPhase').style.color = 'var(--pink-deep)';
+  pomUpdatePreview();
+}
+
+function playAlarm() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [880, 660, 880].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq; osc.type = 'sine';
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.25);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.25 + 0.3);
+      osc.start(ctx.currentTime + i * 0.25);
+      osc.stop(ctx.currentTime + i * 0.25 + 0.3);
+    });
+  } catch(e) {}
+}
+
+function playAlarmEnd() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [440, 554, 659, 880].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq; osc.type = 'sine';
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.2);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.2 + 0.5);
+      osc.start(ctx.currentTime + i * 0.2);
+      osc.stop(ctx.currentTime + i * 0.2 + 0.5);
+    });
+  } catch(e) {}
+}
+
+
 function startTimer() {
   if (running) return;
   running = true;
