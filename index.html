@@ -63,8 +63,13 @@
         </div>
         <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
           <div style="display:flex;flex-direction:column;gap:4px">
-            <span style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Tiempo total (min)</span>
-            <input type="number" id="pomTotalMin" value="90" min="10" max="480" style="width:80px"/>
+            <span style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Tiempo total</span>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="number" id="pomTotalHours" value="1" min="0" max="12" style="width:60px"/>
+              <span style="font-size:0.78rem;color:var(--text-muted)">h</span>
+              <input type="number" id="pomTotalMins" value="30" min="0" max="59" style="width:60px"/>
+              <span style="font-size:0.78rem;color:var(--text-muted)">m</span>
+            </div>
           </div>
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Trabajo (min)</span>
@@ -174,6 +179,8 @@
   </div>
 
 </div>
+
+<div id="saveToast" style="display:none"></div>
 
 <!-- Firebase compat CDN -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
