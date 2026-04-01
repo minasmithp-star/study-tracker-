@@ -440,7 +440,122 @@ input[type="number"] {
 }
 input[type="number"]:focus { border-color: var(--pink-deep); }
 
-@media (max-width: 560px) {
+
+/* ── ANIMATIONS ───────────────────────────────────────────────────────────── */
+
+/* App entrance — staggered fade+slide up */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+header         { animation: fadeUp 0.6s cubic-bezier(.16,1,.3,1) both; }
+.timer-card    { animation: fadeUp 0.6s cubic-bezier(.16,1,.3,1) both; }
+.timer-card:nth-of-type(2) { animation-delay: 0.08s; }
+.stats-row     { animation: fadeUp 0.6s cubic-bezier(.16,1,.3,1) 0.14s both; }
+.week-section  { animation: fadeUp 0.6s cubic-bezier(.16,1,.3,1) 0.2s both; }
+.log-section   { animation: fadeUp 0.6s cubic-bezier(.16,1,.3,1) 0.26s both; }
+.breakdown-section { animation: fadeUp 0.6s cubic-bezier(.16,1,.3,1) 0.32s both; }
+
+/* Hex week — hover glow */
+.hex-shape {
+  transition: transform 0.4s cubic-bezier(.16,1,.3,1),
+              filter 0.4s ease;
+}
+.hex-shape:hover {
+  transform: scale(1.12);
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.10));
+}
+
+/* Hex inner color transition — slower and smoother */
+.hex-inner {
+  transition: background 0.8s cubic-bezier(.16,1,.3,1) !important;
+}
+
+/* Hex border glow */
+.hex-border {
+  transition: background 0.8s cubic-bezier(.16,1,.3,1) !important;
+}
+
+/* Pomodoro ring — smooth breathing during break */
+@keyframes ringBreath {
+  0%, 100% { filter: drop-shadow(0 0 4px transparent); }
+  50%       { filter: drop-shadow(0 0 10px rgba(106,172,176,0.4)); }
+}
+
+#pomodoroCard svg { transition: filter 0.8s ease; }
+#pomodoroCard svg.is-break { animation: ringBreath 3s ease-in-out infinite; }
+
+/* Phase transition flash */
+@keyframes phaseFlash {
+  0%   { opacity: 1; }
+  30%  { opacity: 0.3; }
+  100% { opacity: 1; }
+}
+
+.phase-transition { animation: phaseFlash 0.8s ease; }
+
+/* Session saved toast */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(-10px) scale(0.95); }
+}
+
+#saveToast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: var(--bg);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  padding: 10px 20px;
+  border-radius: 999px;
+  z-index: 999;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#saveToast.in  { animation: toastIn  0.5s cubic-bezier(.16,1,.3,1) forwards; }
+#saveToast.out { animation: toastOut 0.4s cubic-bezier(.4,0,1,1) forwards; }
+
+/* Log entry slide in — slower */
+.log-entry {
+  animation: slideIn 0.5s cubic-bezier(.16,1,.3,1) !important;
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Stat values — pulse when updated */
+@keyframes statPulse {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+.stat-pulse { animation: statPulse 0.5s cubic-bezier(.16,1,.3,1); }
+
+/* Buttons */
+.btn {
+  transition: all 0.3s cubic-bezier(.16,1,.3,1) !important;
+}
+.btn:active { transform: scale(0.96); }
+
+/* Pomodoro summary entrance */
+#pomSummary {
+  animation: fadeUp 0.7s cubic-bezier(.16,1,.3,1) both;
+}
+
+/* Timer display color transition */
+.timer-display {
+  transition: color 0.6s ease;
+}
+
   body { padding: 20px 16px 48px; }
 
   header { margin-bottom: 24px; padding-bottom: 18px; }
