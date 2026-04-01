@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HexNote · Study Tracker</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#e8909e">
@@ -20,7 +20,7 @@
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
       <div class="date-pill" id="datePill"></div>
-      <span id="syncStatus" style="font-size:0.65rem;color:var(--text-muted);font-family:'DM Sans',sans-serif;letter-spacing:0.5px;">● conectando…</span>
+      <span id="syncStatus" class="sync-status">● conectando…</span>
     </div>
   </header>
 
@@ -30,7 +30,7 @@
       <div class="timer-display" id="timerDisplay">00:00:00</div>
       <label>Sesión actual</label>
       <div class="subject-row">
-        <select id="subjectSelect"></select>
+        <div class="custom-select" id="subjectSelectWrap"></div>
         <input type="text" id="noteInput" placeholder="Nota opcional…" />
       </div>
       <div class="timer-controls">
@@ -39,10 +39,10 @@
         <button class="btn btn-log" id="logBtn" onclick="logSession()" disabled>✓ Guardar</button>
       </div>
       <div class="manual-row">
-        <label style="font-size:0.72rem;color:var(--text-muted);font-family:'DM Sans',sans-serif;align-self:center;letter-spacing:0.5px;">O agregar manual:</label>
+        <label class="small-label">O agregar manual:</label>
         <input type="number" id="manHours" placeholder="h" min="0" max="24" />
         <input type="number" id="manMins" placeholder="m" min="0" max="59" />
-        <button class="btn" onclick="logManual()" style="font-size:0.78rem;padding:7px 14px;">+ Agregar</button>
+        <button class="btn" onclick="logManual()">+ Agregar</button>
       </div>
     </div>
   </div>
@@ -50,38 +50,37 @@
   <!-- POMODORO -->
   <div class="timer-card" id="pomodoroCard">
     <div class="timer-left">
-
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
         <label style="margin:0">Pomodoro</label>
-        <span id="pomPhase" style="font-size:0.72rem;font-family:'DM Sans',sans-serif;color:var(--pink-deep);letter-spacing:1px;text-transform:uppercase">configurar</span>
+        <span id="pomPhase" class="phase-badge">configurar</span>
       </div>
 
       <!-- Config panel -->
       <div id="pomConfig">
         <div class="subject-row" style="margin-bottom:14px">
-          <select id="pomSubjectSelect"></select>
+          <div class="custom-select" id="pomSubjectSelectWrap" style="width:100%"></div>
         </div>
         <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <span style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Tiempo total</span>
+          <div class="input-group">
+            <span class="input-label">Tiempo total</span>
             <div style="display:flex;gap:6px;align-items:center">
               <input type="number" id="pomTotalHours" value="1" min="0" max="12" style="width:60px"/>
-              <span style="font-size:0.78rem;color:var(--text-muted)">h</span>
+              <span class="unit-label">h</span>
               <input type="number" id="pomTotalMins" value="30" min="0" max="59" style="width:60px"/>
-              <span style="font-size:0.78rem;color:var(--text-muted)">m</span>
+              <span class="unit-label">m</span>
             </div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <span style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Trabajo (min)</span>
+          <div class="input-group">
+            <span class="input-label">Trabajo (min)</span>
             <input type="number" id="pomWorkMin" value="25" min="1" max="120" style="width:70px"/>
           </div>
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <span style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Descanso (min)</span>
+          <div class="input-group">
+            <span class="input-label">Descanso (min)</span>
             <input type="number" id="pomBreakMin" value="15" min="1" max="60" style="width:70px"/>
           </div>
         </div>
-        <div id="pomPlanPreview" style="font-size:0.78rem;color:var(--text-soft);margin-bottom:16px;padding:10px 14px;background:var(--bg);border-radius:10px;border:1px solid var(--border)"></div>
-        <button class="btn btn-primary" onclick="pomStartPlanned()" style="width:100%;text-align:center">▶ Iniciar sesión</button>
+        <div id="pomPlanPreview" class="plan-preview"></div>
+        <button class="btn btn-primary" onclick="pomStartPlanned()" style="width:100%;text-align:center;margin-top:4px">▶ Iniciar sesión</button>
       </div>
 
       <!-- Running panel -->
@@ -92,26 +91,26 @@
               <circle cx="75" cy="75" r="64" fill="none" stroke="var(--surface2)" stroke-width="9"/>
               <circle id="pomRing" cx="75" cy="75" r="64" fill="none" stroke="var(--pink-deep)" stroke-width="9"
                 stroke-dasharray="402" stroke-dashoffset="0" stroke-linecap="round"
-                style="transition:stroke-dashoffset 1s linear, stroke 0.5s"/>
+                style="transition:stroke-dashoffset 1s linear, stroke 0.8s ease"/>
             </svg>
             <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
-              <span id="pomDisplay" style="font-family:'DM Mono',monospace;font-size:2rem;font-weight:500;letter-spacing:-1px;color:var(--text)">25:00</span>
-              <span id="pomProgressLabel" style="font-size:0.65rem;color:var(--text-muted)">🍅 1 / 3</span>
+              <span id="pomDisplay" class="pom-time">25:00</span>
+              <span id="pomProgressLabel" class="pom-progress">🍅 1 / 3</span>
             </div>
           </div>
         </div>
-        <div style="display:flex;justify-content:center;gap:8px;margin-bottom:14px">
-          <div style="text-align:center;padding:8px 14px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
-            <div style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">completados</div>
-            <div id="pomDoneCount" style="font-family:'DM Mono',monospace;font-size:1.1rem;font-weight:500">🍅 0</div>
+        <div class="pom-stats-row">
+          <div class="pom-stat">
+            <div class="pom-stat-label">completados</div>
+            <div id="pomDoneCount" class="pom-stat-value">🍅 0</div>
           </div>
-          <div style="text-align:center;padding:8px 14px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
-            <div style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">estudiado</div>
-            <div id="pomStudiedTime" style="font-family:'DM Mono',monospace;font-size:1.1rem;font-weight:500">0m</div>
+          <div class="pom-stat">
+            <div class="pom-stat-label">estudiado</div>
+            <div id="pomStudiedTime" class="pom-stat-value">0m</div>
           </div>
-          <div style="text-align:center;padding:8px 14px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
-            <div style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">restante</div>
-            <div id="pomRemainingTime" style="font-family:'DM Mono',monospace;font-size:1.1rem;font-weight:500">—</div>
+          <div class="pom-stat">
+            <div class="pom-stat-label">restante</div>
+            <div id="pomRemainingTime" class="pom-stat-value">—</div>
           </div>
         </div>
         <div class="timer-controls">
@@ -119,21 +118,19 @@
           <button class="btn btn-stop" id="pomPauseBtn" onclick="pomPause()">⏸ Pausar</button>
           <button class="btn" onclick="pomAbort()">✕ Terminar</button>
         </div>
-
         <div id="pomSubjectChanger" style="display:none;margin-top:14px;">
           <div class="changer-label">Próxima materia</div>
-          <select id="pomSubjectChangerSelect"></select>
+          <div class="custom-select" id="pomChangerSelectWrap" style="width:100%"></div>
         </div>
       </div>
 
-      <!-- Summary modal -->
+      <!-- Summary -->
       <div id="pomSummary" style="display:none;text-align:center;padding:8px 0">
         <div style="font-size:1.4rem;margin-bottom:8px">🎉</div>
-        <div style="font-family:'DM Serif Display',serif;font-size:1.3rem;margin-bottom:12px">¡Sesión completada!</div>
-        <div id="pomSummaryText" style="font-size:0.82rem;color:var(--text-soft);line-height:1.7;margin-bottom:16px"></div>
+        <div class="summary-title">¡Sesión completada!</div>
+        <div id="pomSummaryText" class="summary-text"></div>
         <button class="btn btn-primary" onclick="pomBackToConfig()" style="width:100%;text-align:center">Nueva sesión</button>
       </div>
-
     </div>
   </div>
 
@@ -181,7 +178,6 @@
 
 <div id="saveToast" style="display:none"></div>
 
-<!-- Firebase compat CDN -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="script.js"></script>
