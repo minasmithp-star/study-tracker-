@@ -90,10 +90,11 @@ let pomTotalStudySecs = 0;
 let pomSubject = '';
 
 function pomCalcPlan() {
-  const totalMin = parseInt(document.getElementById('pomTotalMin').value) || 90;
-  const workMin  = parseInt(document.getElementById('pomWorkMin').value)  || 25;
-  const breakMin = parseInt(document.getElementById('pomBreakMin').value) || 15;
-  // how many work blocks fit: totalMin = n*work + (n-1)*break → n = (totalMin + break) / (work + break)
+  const totalHours = parseInt(document.getElementById('pomTotalHours').value) || 0;
+  const totalMins  = parseInt(document.getElementById('pomTotalMins').value)  || 0;
+  const totalMin   = totalHours * 60 + totalMins;
+  const workMin    = parseInt(document.getElementById('pomWorkMin').value)  || 25;
+  const breakMin   = parseInt(document.getElementById('pomBreakMin').value) || 15;
   const n = Math.floor((totalMin + breakMin) / (workMin + breakMin));
   const actualStudy = n * workMin;
   const actualBreak = (n - 1) * breakMin;
@@ -110,9 +111,8 @@ function pomUpdatePreview() {
     : `<b>${n} pomodoro${n>1?'s':''}</b> de ${workMin} min · ${n>1?`${n-1} descanso${n-1>1?'s':''} de ${breakMin} min · `:'sin descansos · '}<b>${actualStudy} min de estudio</b> · ${actualTotal} min en total`;
 }
 
-// listen to input changes for live preview
 function pomInitPreview() {
-  ['pomTotalMin','pomWorkMin','pomBreakMin'].forEach(id => {
+  ['pomTotalHours','pomTotalMins','pomWorkMin','pomBreakMin'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', pomUpdatePreview);
   });
@@ -220,6 +220,7 @@ function pomPhaseEnd() {
   }
 
   pomUpdateRunDisplay();
+  pomAnimatePhaseChange();
   pomRunning = true;
   pomInterval = setInterval(pomTick, 1000);
 }
@@ -364,6 +365,7 @@ function addSession(subject, secs, note) {
   const session = { id, subject, secs, note, date: new Date().toISOString() };
   setSyncStatus('saving');
   sessionsCol.doc(String(id)).set(session);
+  showToast(`✓ ${fmtTime(secs)} guardado · ${subject}`);
 }
 
 function deleteSession(id) {
@@ -410,6 +412,9 @@ function render() {
   const todaySessions = sessions.filter(s => sameDay(new Date(s.date), now));
   const todaySecs = todaySessions.reduce((a,s) => a+s.secs, 0);
   document.getElementById('statToday').textContent = fmtTime(todaySecs);
+  document.getElementById('statToday').classList.remove('stat-pulse');
+  void document.getElementById('statToday').offsetWidth;
+  document.getElementById('statToday').classList.add('stat-pulse');
   document.getElementById('statTodaySessions').textContent = `${todaySessions.length} sesión${todaySessions.length!==1?'es':''}`;
 
   const weekDates = getWeekDates();
@@ -532,7 +537,30 @@ function render() {
   }
 }
 
-function blendHex(hex, t) {
+function showToast(msg) {
+  const t = document.getElementById('saveToast');
+  if (!t) return;
+  t.textContent = msg;
+  t.style.display = 'block';
+  t.className = 'in';
+  clearTimeout(t._timeout);
+  t._timeout = setTimeout(() => {
+    t.className = 'out';
+    setTimeout(() => { t.style.display = 'none'; }, 400);
+  }, 2200);
+}
+
+function pomAnimatePhaseChange() {
+  const display = document.getElementById('pomDisplay');
+  const svg = document.getElementById('pomodoroCard')?.querySelector('svg');
+  if (display) display.classList.add('phase-transition');
+  if (svg) {
+    svg.classList.toggle('is-break', !pomIsWork);
+  }
+  setTimeout(() => display?.classList.remove('phase-transition'), 800);
+}
+
+
   const r = parseInt(hex.slice(1,3),16);
   const g = parseInt(hex.slice(3,5),16);
   const b = parseInt(hex.slice(5,7),16);
