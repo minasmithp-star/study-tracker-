@@ -47,6 +47,92 @@
     </div>
   </div>
 
+  <!-- POMODORO -->
+  <div class="timer-card" id="pomodoroCard">
+    <div class="timer-left">
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <label style="margin:0">Pomodoro</label>
+        <span id="pomPhase" style="font-size:0.72rem;font-family:'DM Sans',sans-serif;color:var(--pink-deep);letter-spacing:1px;text-transform:uppercase">configurar</span>
+      </div>
+
+      <!-- Config panel -->
+      <div id="pomConfig">
+        <div class="subject-row" style="margin-bottom:14px">
+          <select id="pomSubjectSelect"></select>
+        </div>
+        <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Tiempo total (min)</span>
+            <input type="number" id="pomTotalMin" value="90" min="10" max="480" style="width:80px"/>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Trabajo (min)</span>
+            <input type="number" id="pomWorkMin" value="25" min="1" max="120" style="width:70px"/>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Descanso (min)</span>
+            <input type="number" id="pomBreakMin" value="15" min="1" max="60" style="width:70px"/>
+          </div>
+        </div>
+        <div id="pomPlanPreview" style="font-size:0.78rem;color:var(--text-soft);margin-bottom:16px;padding:10px 14px;background:var(--bg);border-radius:10px;border:1px solid var(--border)"></div>
+        <button class="btn btn-primary" onclick="pomStartPlanned()" style="width:100%;text-align:center">▶ Iniciar sesión</button>
+      </div>
+
+      <!-- Running panel -->
+      <div id="pomRunning" style="display:none">
+        <div style="display:flex;justify-content:center;margin-bottom:16px">
+          <div style="position:relative;width:150px;height:150px">
+            <svg width="150" height="150" style="transform:rotate(-90deg)">
+              <circle cx="75" cy="75" r="64" fill="none" stroke="var(--surface2)" stroke-width="9"/>
+              <circle id="pomRing" cx="75" cy="75" r="64" fill="none" stroke="var(--pink-deep)" stroke-width="9"
+                stroke-dasharray="402" stroke-dashoffset="0" stroke-linecap="round"
+                style="transition:stroke-dashoffset 1s linear, stroke 0.5s"/>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+              <span id="pomDisplay" style="font-family:'DM Mono',monospace;font-size:2rem;font-weight:500;letter-spacing:-1px;color:var(--text)">25:00</span>
+              <span id="pomProgressLabel" style="font-size:0.65rem;color:var(--text-muted)">🍅 1 / 3</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:center;gap:8px;margin-bottom:14px">
+          <div style="text-align:center;padding:8px 14px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
+            <div style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">completados</div>
+            <div id="pomDoneCount" style="font-family:'DM Mono',monospace;font-size:1.1rem;font-weight:500">🍅 0</div>
+          </div>
+          <div style="text-align:center;padding:8px 14px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
+            <div style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">estudiado</div>
+            <div id="pomStudiedTime" style="font-family:'DM Mono',monospace;font-size:1.1rem;font-weight:500">0m</div>
+          </div>
+          <div style="text-align:center;padding:8px 14px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
+            <div style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">restante</div>
+            <div id="pomRemainingTime" style="font-family:'DM Mono',monospace;font-size:1.1rem;font-weight:500">—</div>
+          </div>
+        </div>
+        <div class="timer-controls">
+          <button class="btn btn-primary" id="pomStartBtn" onclick="pomResume()">▶ Reanudar</button>
+          <button class="btn btn-stop" id="pomPauseBtn" onclick="pomPause()">⏸ Pausar</button>
+          <button class="btn" onclick="pomAbort()">✕ Terminar</button>
+        </div>
+
+        <!-- Subject changer, only visible during break -->
+        <div id="pomSubjectChanger" style="display:none;margin-top:14px;padding:12px 14px;background:var(--bg);border-radius:12px;border:1px solid var(--border)">
+          <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Próxima materia</div>
+          <select id="pomSubjectChangerSelect" style="width:100%"></select>
+        </div>
+      </div>
+
+      <!-- Summary modal -->
+      <div id="pomSummary" style="display:none;text-align:center;padding:8px 0">
+        <div style="font-size:1.4rem;margin-bottom:8px">🎉</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:1.3rem;margin-bottom:12px">¡Sesión completada!</div>
+        <div id="pomSummaryText" style="font-size:0.82rem;color:var(--text-soft);line-height:1.7;margin-bottom:16px"></div>
+        <button class="btn btn-primary" onclick="pomBackToConfig()" style="width:100%;text-align:center">Nueva sesión</button>
+      </div>
+
+    </div>
+  </div>
+
   <!-- STATS -->
   <div class="stats-row">
     <div class="stat-card">
